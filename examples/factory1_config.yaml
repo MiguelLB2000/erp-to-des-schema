@@ -1,0 +1,51 @@
+# Factory 1 config — copy of the default config.yaml
+# Source file: alle_AGs.xls (ERP export)
+# Confirmed column names from actual file inspection.
+
+columns:
+  part_id:              "Teil"
+  part_name:            "Bezeichnung"
+  routing_step:         "Arbeitsgang"
+  routing_plan:         "Arbeitsplan"
+  routing_plan_version: "Arbeitsplan-Version"
+  operation_name:       "AG-Bezeichnung"
+  cost_center:          "Kst."
+  machine_id:           "Fert.anlage"
+  calc_rate:            "kalk. Vorgabe"
+  zbs:                  "ZBS"
+  site:                 "Standort"
+
+site_filter:
+  value: "OV1"
+
+skip_operation_names:
+  - "Hinweis"
+
+# ZBS 3: 57,499 rows — hours per 1,000 pieces
+# ZBS 2:     73 rows — hours per 100 pieces
+# ZBS C:  1,060 rows — €/piece (cost, not time) → skipped
+# ZBS empty: 626 rows → skipped
+zbs_rules:
+  skip_values:
+    - ""
+    - "C"
+  conversions:
+    "3":
+      description: "hours per 1 000 pieces"
+      divisor: 1000
+      multiplier: 60
+    "2":
+      description: "hours per 100 pieces"
+      divisor: 100
+      multiplier: 60
+
+defaults:
+  required_skill:              ""
+  setup_time_min:              0.0
+  batch_overhead_min:          0.0
+  batch_size:                  1
+  yield_pct:                   100.0
+  scrap_or_rework:             ""
+  transport_time_min:          0.0
+  staffing_factor_per_machine: 1.0
+  operator_attention_factor:   1.0

@@ -1,0 +1,67 @@
+# ERP → DES Schema Extractor — Default Config (Factory 1 / alle_AGs.xls)
+# Edit this file to point the extractor at a different ERP export.
+# Column name values must exactly match the header row in your ERP file.
+
+# ── Column name mappings ──────────────────────────────────────────────────────
+columns:
+  part_id:              "Teil"              # Part / product number
+  part_name:            "Bezeichnung"       # Part description
+  routing_step:         "Arbeitsgang"       # Operation sequence number
+  routing_plan:         "Arbeitsplan"       # Routing plan identifier
+  routing_plan_version: "Arbeitsplan-Version"
+  operation_name:       "AG-Bezeichnung"    # Human-readable operation label
+  cost_center:          "Kst."              # Kostenstelle → mapped to resource group
+  machine_id:           "Fert.anlage"       # Individual machine / equipment ID
+  calc_rate:            "kalk. Vorgabe"     # Calculated rate value (time or cost)
+  zbs:                  "ZBS"               # Rate-type code (3=h/1000, 2=h/100, C=cost)
+  site:                 "Standort"          # Plant / site code
+
+# ── Site filter ───────────────────────────────────────────────────────────────
+# Only rows where columns.site == value are kept.
+site_filter:
+  value: "OV1"
+
+# ── Operation names that are admin notes, not real process steps ──────────────
+# Rows where columns.operation_name matches any entry here are dropped.
+skip_operation_names:
+  - "Hinweis"
+
+# ── ZBS decode rules ─────────────────────────────────────────────────────────
+# ZBS controls how columns.calc_rate is converted to minutes per piece.
+#
+# skip_values: ZBS codes that are NOT time data — rows are dropped entirely.
+#   ""  = blank / no ZBS → irrelevant row
+#   "C" = Kosten pro Stück (€/piece) → cost row, no simulation input
+#
+# conversions: for each ZBS code, define divisor and multiplier so that
+#   cycle_time_min = (calc_rate / divisor) × multiplier
+#
+#   ZBS 3 → hours per 1 000 pieces: (val / 1000) × 60 = min/piece
+#   ZBS 2 → hours per 100  pieces:  (val / 100)  × 60 = min/piece
+zbs_rules:
+  skip_values:
+    - ""
+    - "C"
+  conversions:
+    "3":
+      description: "hours per 1 000 pieces"
+      divisor: 1000
+      multiplier: 60
+    "2":
+      description: "hours per 100 pieces"
+      divisor: 100
+      multiplier: 60
+
+# ── Default output values (written verbatim into the schema) ──────────────────
+# These fill schema columns that have no ERP source.
+# Replace "TODO" strings with actual values if you have the data.
+defaults:
+  required_skill:              ""     # skill tag for operator routing — fill if used
+  setup_time_min:              0.0    # Einlagen = mold insert codes, NOT setup time
+  batch_overhead_min:          0.0
+  batch_size:                  1      # fill from PB-Familien.xlsx
+  yield_pct:                   100.0  # fill from scrap data if available
+  scrap_or_rework:             ""
+  transport_time_min:          0.0
+  staffing_factor_per_machine: 1.0
+  operator_attention_factor:   1.0

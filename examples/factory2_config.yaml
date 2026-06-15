@@ -1,0 +1,71 @@
+# Factory 2 config — STUB for a second ERP source
+#
+# This example maps a SAP PP routing export (CR03 list variant) to the same
+# DES schema. Column names differ from Factory 1; ZBS is replaced by the
+# SAP "BaseQty" / "Unit" combination.
+#
+# INSTRUCTIONS
+#   1. Open your ERP export and note the exact header names (row 1).
+#   2. Replace every value under `columns:` with the matching header text.
+#   3. Set site_filter.value to the plant code present in your file.
+#   4. Under zbs_rules.conversions, define one entry per rate-type code
+#      found in your file. If your ERP has no rate-type code and all rows
+#      use the same unit, set skip_values: [] and add a single conversion
+#      entry keyed to whatever value appears (or add a synthetic key "ALL").
+#   5. Run: python extract.py --input <file> --config factory2_config.yaml
+#            --schema <template> --output <out>
+
+columns:
+  part_id:              "Material"          # SAP material number
+  part_name:            "Material Description"
+  routing_step:         "Operation"         # e.g. 0010, 0020 …
+  routing_plan:         "Routing"           # task list group number
+  routing_plan_version: "Group Counter"
+  operation_name:       "Operation Short Text"
+  cost_center:          "Work Center"       # maps to resource group
+  machine_id:           "Resource"          # individual machine / work cell
+  calc_rate:            "Standard Value 1"  # base-quantity-normalised rate
+  zbs:                  "Base Quantity Unit" # e.g. MIN (minutes), H (hours)
+  site:                 "Plant"
+
+site_filter:
+  value: "DE02"         # replace with your plant code
+
+skip_operation_names:
+  - "Note"
+  - "Hinweis"
+
+# Adjust to match the unit codes present in your ERP export.
+# Example: SAP PP may export rates already in min/piece (unit = "MIN").
+zbs_rules:
+  skip_values:
+    - ""
+    - "EUR"             # cost entries — not simulation input
+  conversions:
+    "MIN":
+      description: "minutes per piece (already in target unit)"
+      divisor: 1
+      multiplier: 1
+    "H":
+      description: "hours per piece → convert to minutes"
+      divisor: 1
+      multiplier: 60
+    "H/100":
+      description: "hours per 100 pieces"
+      divisor: 100
+      multiplier: 60
+    "H/1000":
+      description: "hours per 1 000 pieces"
+      divisor: 1000
+      multiplier: 60
+
+defaults:
+  required_skill:              ""
+  setup_time_min:              0.0
+  batch_overhead_min:          0.0
+  batch_size:                  1
+  yield_pct:                   100.0
+  scrap_or_rework:             ""
+  transport_time_min:          0.0
+  staffing_factor_per_machine: 1.0
+  operator_attention_factor:   1.0
