@@ -114,7 +114,7 @@ def main():
     zbs_cfg  = cfg["zbs_rules"]
     skip_ops = cfg.get("skip_operation_names", [])
     defaults = cfg.get("defaults", {})
-    site_val = cfg["site_filter"]["value"]
+    site_val = cfg["site_filter"].get("value")   # None → site filter skipped
 
     skip_counts = defaultdict(int)   # reason → count
 
@@ -124,14 +124,21 @@ def main():
         print(f"ERROR: {args.input} not found (cwd={os.getcwd()})")
         sys.exit(1)
 
-    try:
-        df = pd.read_excel(args.input, engine="xlrd", dtype=str)
-    except Exception:
+    if args.input.lower().endswith(".csv"):
         try:
-            df = pd.read_excel(args.input, engine="openpyxl", dtype=str)
+            df = pd.read_csv(args.input, dtype=str)
         except Exception as exc:
             print(f"ERROR reading {args.input}: {exc}")
             sys.exit(1)
+    else:
+        try:
+            df = pd.read_excel(args.input, engine="xlrd", dtype=str)
+        except Exception:
+            try:
+                df = pd.read_excel(args.input, engine="openpyxl", dtype=str)
+            except Exception as exc:
+                print(f"ERROR reading {args.input}: {exc}")
+                sys.exit(1)
 
     df.columns = [str(c).strip() for c in df.columns]
     total_loaded = len(df)
@@ -147,13 +154,16 @@ def main():
     # ── [2/5] Filter ──────────────────────────────────────────────────────────
     print(f"\n[2/5] Filtering rows ...")
 
-    # Site filter
-    site_col = col["site"]
-    before   = len(df)
-    df       = df[df[site_col] == site_val]
-    n_site   = before - len(df)
-    skip_counts[f"wrong_site (≠{site_val})"] += n_site
-    print(f"      {site_col}={site_val}: {len(df):,} rows kept  (removed {n_site:,})")
+    # Site filter (skipped when site_filter.value is null in config)
+    if site_val:
+        site_col = col["site"]
+        before   = len(df)
+        df       = df[df[site_col] == site_val]
+        n_site   = before - len(df)
+        skip_counts[f"wrong_site (≠{site_val})"] += n_site
+        print(f"      {site_col}={site_val}: {len(df):,} rows kept  (removed {n_site:,})")
+    else:
+        print(f"      Site filter disabled — keeping all {len(df):,} rows")
 
     # Admin-note operation names (e.g. "Hinweis")
     op_col = col["operation_name"]
@@ -270,13 +280,13 @@ def main():
     print(f"      Unique products:            {len(product_set):,}")
     print(f"      Unique resource groups:     {len(kst_map):,}")
 
-    print(f"\n      KOSTENSTELLE → RESOURCE GROUP  (rename RG_xxx to descriptive names):")
-    print(f"      {'Kst.':>10}  →  {'resource_group':<28}  machines (sample)")
+    print(f"\n      KOSTENSTELLE -> RESOURCE GROUP  (rename RG_xxx to descriptive names):")
+    print(f"      {'Kst.':>10}  ->  {'resource_group':<28}  machines (sample)")
     print(f"      {'-'*72}")
     for kst_raw, rg in sorted(kst_map.items(), key=lambda x: x[0]):
         machines = sorted(machine_set.get(rg, []))[:3]
         suffix   = "..." if len(machine_set.get(rg, [])) > 3 else ""
-        print(f"      {kst_raw:>10}  →  {rg:<28}  {machines}{suffix}")
+        print(f"      {kst_raw:>10}  ->  {rg:<28}  {machines}{suffix}")
 
     # ── [5/5] Write schema workbook ───────────────────────────────────────────
     print(f"\n[5/5] Writing {args.output} ...")
