@@ -1,71 +1,55 @@
-# Factory 2 config — STUB for a second ERP source
+# Factory 2 config — AnyLogic Electronics Sample Dataset
+# Source file: anylogic_electronics_sample_dataset/routing_operations.csv
 #
-# This example maps a SAP PP routing export (CR03 list variant) to the same
-# DES schema. Column names differ from Factory 1; ZBS is replaced by the
-# SAP "BaseQty" / "Unit" combination.
-#
-# INSTRUCTIONS
-#   1. Open your ERP export and note the exact header names (row 1).
-#   2. Replace every value under `columns:` with the matching header text.
-#   3. Set site_filter.value to the plant code present in your file.
-#   4. Under zbs_rules.conversions, define one entry per rate-type code
-#      found in your file. If your ERP has no rate-type code and all rows
-#      use the same unit, set skip_values: [] and add a single conversion
-#      entry keyed to whatever value appears (or add a synthetic key "ALL").
-#   5. Run: python extract.py --input <file> --config factory2_config.yaml
-#            --schema <template> --output <out>
+# This dataset is CSV-based and already has cycle times in min/unit.
+# There is no ZBS column — the "process_time_type" column plays that role.
+# There is no site column — site_filter is disabled (value: null).
 
 columns:
-  part_id:              "Material"          # SAP material number
-  part_name:            "Material Description"
-  routing_step:         "Operation"         # e.g. 0010, 0020 …
-  routing_plan:         "Routing"           # task list group number
-  routing_plan_version: "Group Counter"
-  operation_name:       "Operation Short Text"
-  cost_center:          "Work Center"       # maps to resource group
-  machine_id:           "Resource"          # individual machine / work cell
-  calc_rate:            "Standard Value 1"  # base-quantity-normalised rate
-  zbs:                  "Base Quantity Unit" # e.g. MIN (minutes), H (hours)
-  site:                 "Plant"
+  part_id:              "product_id"
+  part_name:            "product_id"       # no separate name column; reuse ID
+  routing_step:         "operation_seq"
+  routing_plan:         "routing_id"
+  routing_plan_version: "revision"
+  operation_name:       "operation_name"
+  cost_center:          "resource_group"   # already descriptive (e.g. SMT_PRINTER)
+  machine_id:           "resource_group"   # no per-row machine ID in routing file
+  calc_rate:            "run_time_min_per_unit"   # already in min/piece
+  zbs:                  "process_time_type"
+  site:                 "product_id"       # unused placeholder — filter disabled below
 
+# Disable site filter (no plant column in this dataset)
 site_filter:
-  value: "DE02"         # replace with your plant code
+  value: null
 
-skip_operation_names:
-  - "Note"
-  - "Hinweis"
+skip_operation_names: []   # no admin-note rows in this dataset
 
-# Adjust to match the unit codes present in your ERP export.
-# Example: SAP PP may export rates already in min/piece (unit = "MIN").
+# process_time_type values found in the dataset:
+#   "per_unit_plus_batch" — most operations
+#   "per_unit"            — simple operations
+# Both use run_time_min_per_unit which is already in min/piece → divisor=1, multiplier=1
 zbs_rules:
-  skip_values:
-    - ""
-    - "EUR"             # cost entries — not simulation input
+  skip_values: []
   conversions:
-    "MIN":
-      description: "minutes per piece (already in target unit)"
+    "per_unit_plus_batch":
+      description: "run_time_min_per_unit is already min/piece"
       divisor: 1
       multiplier: 1
-    "H":
-      description: "hours per piece → convert to minutes"
+    "per_unit":
+      description: "run_time_min_per_unit is already min/piece"
       divisor: 1
-      multiplier: 60
-    "H/100":
-      description: "hours per 100 pieces"
-      divisor: 100
-      multiplier: 60
-    "H/1000":
-      description: "hours per 1 000 pieces"
-      divisor: 1000
-      multiplier: 60
+      multiplier: 1
 
+# Note: setup_time_min_default is a column in routing_operations.csv but is not
+# read here — it is left as 0.0 default. To populate it, add a post-processing
+# step that joins setup_time_min_default into the Routing sheet by operation_id.
 defaults:
-  required_skill:              ""
-  setup_time_min:              0.0
-  batch_overhead_min:          0.0
-  batch_size:                  1
-  yield_pct:                   100.0
+  required_skill:              ""     # see required_skill_group column for future mapping
+  setup_time_min:              0.0    # actual values in setup_time_min_default column
+  batch_overhead_min:          0.0    # batch_time_min column available if needed
+  batch_size:                  1      # batch_size_qty column available if needed
+  yield_pct:                   100.0  # actual values in yield_pct column (see note)
   scrap_or_rework:             ""
   transport_time_min:          0.0
-  staffing_factor_per_machine: 1.0
-  operator_attention_factor:   1.0
+  staffing_factor_per_machine: 1.0   # actual values in staffing_factor_per_machine column
+  operator_attention_factor:   1.0   # actual values in operator_attention_factor column
