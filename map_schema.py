@@ -251,23 +251,34 @@ def load_template(path):
         cols = [c.value for c in ws[2] if c.value]
         banner = str(ws["A1"].value or "")
         sheets[ws.title] = {"cols": cols, "required": "[REQUIRED]" in banner}
-    required_cols, blank_rule, not_used = set(), {}, {}
+    required_cols, blank_rule, not_used, role, module = set(), {}, {}, {}, {}
     if "Dictionary" in wb.sheetnames:
         ws = wb["Dictionary"]
         hdr = [c.value for c in ws[2]]
-        i_s, i_c, i_r, i_b, i_st = (hdr.index(h) for h in ("sheet", "column", "required_optional", "if_blank_or_missing", "status"))
+        i_m, i_s, i_c, i_r, i_b, i_st = (hdr.index(h) for h in ("module", "sheet", "column", "required_optional", "if_blank_or_missing", "status"))
+        i_w = hdr.index("when_module_on") if "when_module_on" in hdr else None
         for row in ws.iter_rows(min_row=3, values_only=True):
+            key = (row[i_s], str(row[i_c]).split(" (")[0])
             rule = str(row[i_b] or "")
-            blank_rule[(row[i_s], row[i_c])] = rule
+            blank_rule[key], module[key] = rule, row[i_m]
+            role[key] = str(row[i_w] or "") if i_w is not None else ""
             if str(row[i_st] or "") in ("not used yet", "open decision"):
-                not_used[(row[i_s], row[i_c])] = str(row[i_st])
-            if row[i_r] == "required" and ("skipped" in rule or "REJECTED" in rule):
-                required_cols.add((row[i_s], row[i_c]))
+                not_used[key] = str(row[i_st])
+            if i_w is None and row[i_r] == "required" and ("skipped" in rule or "REJECTED" in rule):
+                required_cols.add(key)
     for s, info in sheets.items():
         info["blank"] = {c: blank_rule.get((s, c), "") for c in info["cols"]}
+        info["role"] = {c: (f"{module[(s, c)]}: " if module.get((s, c), "-") != "-" else "") + role.get((s, c), "")
+                        if role.get((s, c)) else "" for c in info["cols"]}
         info["not_used"] = {c: not_used[(s, c)] for c in info["cols"] if (s, c) in not_used}
-        sheet_level = len(info["cols"]) > 1 and len(set(info["blank"].values())) == 1
-        info["req_cols"] = [c for c in info["cols"] if (s, c) in required_cols and (not sheet_level or c == info["cols"][0])]
+        own = module.get((s, info["cols"][0])) if info["cols"] else None
+        if role:
+            # needed once the sheet is in use: switch/needed columns of the core or of the sheet's own module
+            info["req_cols"] = [c for c in info["cols"] if role.get((s, c), "").startswith(("needed", "switch"))
+                                and module.get((s, c)) in ("M0", own)]
+        else:
+            sheet_level = len(info["cols"]) > 1 and len(set(info["blank"].values())) == 1
+            info["req_cols"] = [c for c in info["cols"] if (s, c) in required_cols and (not sheet_level or c == info["cols"][0])]
     count = defaultdict(int)
     for info in sheets.values():
         for c in info["cols"]:
@@ -528,7 +539,7 @@ def fill_missing(sheet, info, df, mapping, tables, base):
     todo = [c for c in info["req_cols"] if c not in mapping] + [c for c in info["cols"] if c not in mapping and c not in info["req_cols"]]
     if not todo:
         return extra
-    labels = [f"{c} ({'REQUIRED' if c in info['req_cols'] else 'optional'})" for c in todo]
+    labels = [f"{c} ({'REQUIRED' if c in info['req_cols'] else info['role'].get(c) or 'optional'})" for c in todo]
     pick = ask(f"{sheet}|missing", f"Sheet {sheet}: no column found for {', '.join(labels)}. What now?",
                [("hand", "fill them by hand later"), ("source", "I give the file and column for some of them")])
     if pick != "source":
@@ -706,7 +717,7 @@ def main():
         yaml.safe_dump(ANSWERS, fh, allow_unicode=True, sort_keys=True)
 
     say(f"\n[4/4] Written {a.output}   (answers saved to {ans_path})")
-    say("\nREQUIRED, still empty:")
+    say("\nREQUIRED (core, or needed by a module whose sheet is filled), still empty:")
     for s, info in sheets.items():
         if info["required"] and s not in results:
             say(f"  {s}: whole sheet")
@@ -722,8 +733,8 @@ def main():
             miss = [c for c in info["cols"] if c not in info["req_cols"] and c not in info["not_used"]
                     and (c not in report[s]["filled"] or c in report[s]["open"])]
             for c in miss:
-                rule = info["blank"].get(c, "")
-                say(f"  {s}.{c}" + (f"  -> {rule}" if rule.startswith("DEFAULT") else ""))
+                rule = info["role"].get(c) or (info["blank"].get(c, "") if info["blank"].get(c, "").startswith("DEFAULT") else "")
+                say(f"  {s}.{c}" + (f"  -> {rule}" if rule else ""))
     kept = [f"{s}.{c} ({st})" for s, info in sheets.items() if s in report
             for c, st in info["not_used"].items() if c in report[s]["filled"]]
     if kept:

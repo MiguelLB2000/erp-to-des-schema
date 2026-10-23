@@ -54,7 +54,7 @@ python map_schema.py --input examples/demo --output demo.xlsx
    - a header that may mean this column or another one becomes a question (`Menge`, `Anzahl`, `resource_id`, `quantity_on_hand` vs `available_qty`);
    - columns still missing are listed per sheet, required ones first. You choose: **fill by hand later**, or **give the file and column**. A column from another table is linked by a column both tables share (for example `bom_id`); if a key appears several times there, the first row is used and the report says so.
 4. **Units.** Time columns are converted to the template unit (`_min` or `_hours`). The unit is read from the header (`[min]`, `[h]`, `minutes`, `Stunden`); if the header does not say, you are asked. Date columns (release, due) become minutes after one simulation start, which is asked once.
-5. **Write and report.** The workbook is written with English template headers; `Config scenario_id` is set to the file name. A report lists what is still empty: required gaps first, then optional ones with the default the model will use. Saved as `<output>_report.txt`.
+5. **Write and report.** The workbook is written with English template headers; `Config scenario_id` is set to the file name. A report lists what is still empty: required gaps first (the core, plus the columns a module needs once its sheet is filled), then the rest with their role from the Dictionary column `when_module_on` (switch / needed / optional with its default) and the module they belong to. Saved as `<output>_report.txt`.
 
 Every answer is saved in `<output>_answers.yaml`. Run again and nothing already answered is asked; edit that file to change a choice. The answers file is also the written record of how this company's data was mapped.
 
