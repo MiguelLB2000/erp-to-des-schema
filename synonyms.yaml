@@ -1,0 +1,225 @@
+# Header synonyms per template column (German and English).
+# Matching ignores case, umlauts (ä = ae), punctuation, underscores and text in brackets.
+#   exact:     a header equal to one of these is assigned without a question
+#   ambiguous: a header equal to one of these becomes a question (it may mean this column or another)
+# A header equal to the template column name itself is always exact.
+# Add your own ERP's headers here; no code change is needed.
+
+product_id:
+  exact: [product id, product, item id, item, part id, part, part number, article, article number, material, material number,
+          artikel, artikelnummer, artikel nr, artikel text, teil, teil text, teilenummer, teile nr, sachnummer, materialnummer, produkt, produktnummer]
+  ambiguous: [routing id, id, nummer, number, parent item id]
+product_name:
+  exact: [product name, item name, part name, description, item description, article description, name,
+          bezeichnung, artikelbezeichnung, teilebezeichnung, produktname, materialbezeichnung, bezeichnung1]
+  ambiguous: [text, kurztext]
+lot_size:
+  exact: [lot size, batch quantity, lot quantity, losgroesse, los groesse, mindestlosgroesse, fertigungslos]
+  ambiguous: [lot size min, min lot size, minimum lot size, fxorq, menge, quantity]
+order_quantity:
+  exact: [order quantity, order qty, ordered quantity, quantity ordered, auftragsmenge, bestellmenge, menge auftrag, absatz, absatzmenge]
+  ambiguous: [quantity, qty, menge, demand, bedarf, absatzist2019, planned qty]
+arrival_interval_min:
+  exact: [arrival interval min, arrival interval, interarrival time, zwischenankunftszeit]
+  ambiguous: []
+
+step_number:
+  exact: [step number, step, operation seq, operation sequence, operation number, operation no, sequence, seq,
+          arbeitsgang, arbeitsgang nr, ag, ag nr, arbeitsgangnummer, vorgang, vorgangsnummer, reihenfolge, folge]
+  ambiguous: [issue operation seq, line no, position]
+process_name:
+  exact: [process name, operation name, operation, operation description, process, step name,
+          ag bezeichnung, arbeitsgangbezeichnung, vorgangsbezeichnung, taetigkeit, arbeitsvorgang]
+  ambiguous: [description, bezeichnung, text]
+resource_group:
+  exact: [resource group, machine group, work center group, workcenter group, work centre group, cost center, cost centre,
+          ressourcengruppe, maschinengruppe, arbeitsplatzgruppe, kostenstelle, kst, kst nr]
+  ambiguous: [work center, workcenter, arbeitsplatz, group, gruppe, skill group primary]
+required_skill:
+  exact: [required skill, skill, required skill group, qualifikation, benoetigte qualifikation]
+  ambiguous: [skill group, skill group primary]
+cycle_time_min:
+  exact: [cycle time min, cycle time, run time min per unit, run time per unit, processing time per unit, time per unit, unit time,
+          stueckzeit, zeit je einheit, zeit pro stueck, bearbeitungszeit je stueck, kalk vorgabe, vorgabezeit, te]
+  ambiguous: [time, zeit, run time, process time, processing time, bearbeitungszeit, standard value 1, duration]
+setup_time_min:
+  exact: [setup time min, setup time, setup time min default, changeover time, ruestzeit, ruest zeit, tr]
+  ambiguous: [time, zeit, setup]
+batch_size:
+  exact: [batch size, batch size qty, batch quantity max, chargengroesse, chargen groesse]
+  ambiguous: [batch, charge, transfer batch qty]
+yield_pct:
+  exact: [yield pct, yield, first pass yield, yield percent, ausbeute, gutanteil]
+  ambiguous: [quality, qualitaet]
+scrap_or_rework:
+  exact: [scrap or rework, scrap rework, ausschuss oder nacharbeit]
+  ambiguous: []
+transport_time_min:
+  exact: [transport time min, transport time, move time, transportzeit, liegezeit transport]
+  ambiguous: [transfer time, uebergangszeit]
+batch_overhead_min:
+  exact: [batch overhead min, batch time min, batch time, time per batch, chargenzeit]
+  ambiguous: [fixed time, fixzeit]
+staffing_factor_per_machine:
+  exact: [staffing factor per machine, staff required per machine, staffing factor, personalfaktor, bedienfaktor]
+  ambiguous: [min staff]
+operator_attention_factor:
+  exact: [operator attention factor, attention factor]
+  ambiguous: []
+setup_family:
+  exact: [setup family, ruestfamilie]
+  ambiguous: [family, familie]
+worker_needed_during:
+  exact: [worker needed during]
+  ambiguous: [setup requires exclusive staff]
+
+machine_id:
+  exact: [machine id, machine, machine number, equipment id, equipment, maschine, maschinennummer, maschinen nr, anlage, anlagennummer,
+          fert anlage, fertigungsanlage, betriebsmittel]
+  ambiguous: [resource id, resource, ressource, arbeitsplatz, work center, workcenter, station id, planned resource id]
+machine_name:
+  exact: [machine name, equipment name, maschinenbezeichnung, anlagenbezeichnung]
+  ambiguous: [name, description, bezeichnung]
+station_capacity:
+  exact: [station capacity, capacity units, parallel units, number of machines, kapazitaet einheiten, anzahl maschinen, arbeitsplaetze]
+  ambiguous: [capacity, kapazitaet, anzahl]
+MTBF_hours:
+  exact: [mtbf hours, mtbf, mean time between failures, mtbf h, mtbf std]
+  ambiguous: []
+MTTR_min:
+  exact: [mttr min, mttr minutes, mttr, mean time to repair, mttr minuten]
+  ambiguous: []
+cost_per_hour:
+  exact: [cost per hour, hourly cost, hourly cost eur, machine hour rate, maschinenstundensatz, stundensatz, kosten je stunde]
+  ambiguous: [cost, rate, kosten]
+availability:
+  exact: [availability, availability pct, verfuegbarkeit]
+  ambiguous: [verfuegbar]
+warmup_min:
+  exact: [warmup min, warm up time, warmlaufzeit, warmlaufzeit m]
+  ambiguous: []
+setup_family_current:
+  exact: [setup family current, current setup family, start setup family]
+  ambiguous: []
+
+shift_id:
+  exact: [shift id, shift, shift model id, shift model, schicht, schicht id, schichtmodell, schichtmodell id, default shift model id, default shift]
+  ambiguous: [model]
+shift_name:
+  exact: [shift name, schichtname, schichtbezeichnung]
+  ambiguous: [description, name, bezeichnung]
+start_time:
+  exact: [start time, shift start, from time, beginn, startzeit, schichtbeginn, von]
+  ambiguous: [start]
+end_time:
+  exact: [end time, shift end, to time, ende, endzeit, schichtende, bis]
+  ambiguous: [end]
+days:
+  exact: [days, days of week, weekdays, wochentage, arbeitstage, tage]
+  ambiguous: []
+break_start:
+  exact: [break start, pause start, pausenbeginn, pause von]
+  ambiguous: []
+break_end:
+  exact: [break end, pause end, pausenende, pause bis]
+  ambiguous: [break minutes, pause minuten]
+
+resource_id:
+  exact: [resource id, ressource id, ressource]
+  ambiguous: [machine id, staff id, worker id, resource]
+resource_type:
+  exact: [resource type, ressourcentyp]
+  ambiguous: [type, typ]
+shift_model_id:
+  exact: [shift model id, schichtmodell id, schichtmodell]
+  ambiguous: [shift id, shift]
+valid_from:
+  exact: [valid from, gueltig ab, gueltig von]
+  ambiguous: [from, von]
+valid_to:
+  exact: [valid to, gueltig bis]
+  ambiguous: [to, bis]
+capacity_multiplier:
+  exact: [capacity multiplier, kapazitaetsfaktor]
+  ambiguous: [factor, faktor]
+
+worker_id:
+  exact: [worker id, worker, staff id, employee id, employee, person id, personalnummer, mitarbeiter, mitarbeiter id, mitarbeiternummer, werker]
+  ambiguous: [person, staff, resource id]
+worker_name:
+  exact: [worker name, staff name, employee name, mitarbeitername]
+  ambiguous: [name]
+efficiency_factor:
+  exact: [efficiency factor, efficiency, leistungsgrad, leistungsfaktor]
+  ambiguous: [factor, faktor]
+max_parallel_machines:
+  exact: [max parallel machines, max machines, mehrmaschinenbedienung]
+  ambiguous: [max machines per staff]
+hourly_cost:
+  exact: [hourly cost, hourly cost eur, labour cost per hour, labor cost per hour, lohnsatz, stundenlohn]
+  ambiguous: [cost, kosten]
+skill_level:
+  exact: [skill level, qualification level, qualifikationsstufe, qualifikationsgrad]
+  ambiguous: [level, stufe]
+can_setup:
+  exact: [can setup, setup allowed, darf ruesten]
+  ambiguous: []
+can_operate:
+  exact: [can operate, operate allowed, darf bedienen]
+  ambiguous: []
+can_maintain:
+  exact: [can maintain, maintain allowed, darf warten]
+  ambiguous: []
+max_parallel_machines_for_group:
+  exact: [max parallel machines for group, max machines for group]
+  ambiguous: [max parallel machines]
+
+priority:
+  exact: [priority, prio, prioritaet, alternative priority, dringlichkeit]
+  ambiguous: [rank, rang]
+run_time_factor:
+  exact: [run time factor, speed factor, laufzeitfaktor]
+  ambiguous: [factor, faktor]
+
+order_id:
+  exact: [order id, order, order number, production order, auftrag, auftragsnummer, fertigungsauftrag, fa nr, bestellnummer]
+  ambiguous: [id, nummer, number]
+release_min:
+  exact: [release min, release time, release date, release, freigabe, freigabetermin, freigabezeitpunkt, starttermin]
+  ambiguous: [start date, start, planned start]
+due_min:
+  exact: [due min, due time, due date, due, liefertermin, endtermin, faelligkeit, wunschtermin]
+  ambiguous: [end date, planned end, delivery date]
+order_type:
+  exact: [order type, auftragsart, auftragstyp]
+  ambiguous: [type, typ]
+
+from_setup_family:
+  exact: [from setup family, from family, von familie]
+  ambiguous: []
+to_setup_family:
+  exact: [to setup family, to family, nach familie]
+  ambiguous: []
+
+item_id:
+  exact: [item id, item, material, material number, component, artikel, artikelnummer, materialnummer, teil, sachnummer]
+  ambiguous: [component item id, product id, part]
+start_qty:
+  exact: [start qty, start quantity, initial stock, opening stock, anfangsbestand, initialbestand, startbestand]
+  ambiguous: [available qty, quantity on hand, stock, on hand, bestand, lagerbestand, menge, quantity]
+
+parent_id:
+  exact: [parent id, parent item id, parent, parent item, uebergeordnet, oberteil, baugruppe, baukasten, stuecklistenkopf]
+  ambiguous: [bom id, assembly, product id]
+component_id:
+  exact: [component id, component item id, component, child, child item, komponente, unterteil, bestandteil, position material]
+  ambiguous: [item id, material]
+qty_per_parent:
+  exact: [qty per parent, quantity per parent, quantity per, menge je, mengenfaktor, menge pro baugruppe]
+  ambiguous: [quantity, qty, menge]
+issue_step:
+  exact: [issue step, issue operation seq, issue operation, entnahme arbeitsgang, verbrauch arbeitsgang]
+  ambiguous: [operation seq, arbeitsgang]
+scrap_pct:
+  exact: [scrap pct, component scrap pct, scrap percent, ausschuss, ausschuss prozent, ausschussanteil]
+  ambiguous: [scrap]

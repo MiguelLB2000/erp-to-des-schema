@@ -25,6 +25,7 @@ site_filter:
 # Rows where columns.operation_name matches any entry here are dropped.
 skip_operation_names:
   - "Hinweis"
+  - "gesperrt"     # blocked operation, not a real step
 
 # ── ZBS decode rules ─────────────────────────────────────────────────────────
 # ZBS controls how columns.calc_rate is converted to minutes per piece.

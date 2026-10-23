@@ -1,21 +1,14 @@
 # erp-to-des-schema
 
-Converts an ERP routing export into a populated **Discrete Event Simulation (DES) input schema** workbook.
+Maps ERP or MES exports into the input workbook of a generic discrete-event simulation (DES) model. Headers may be German or English. Everything that is certain is filled automatically; everything uncertain becomes a question; everything missing is listed, required columns first.
 
-The tool reads raw operation/routing data, decodes cycle times according to configurable rate-type rules, deduplicates to the latest routing version, and writes Routing, Products, and Machines sheets into a schema template — without touching any Python when you switch ERP sources.
+The target is `schema/Schema_Template_EMPTY.xlsx`: one sheet per input table (Products, Routing, Machines, Shifts, Workers, Orders, BOM, ...) and a `Dictionary` sheet that states for every column whether it is required and what the model assumes when it is blank. The tool reads that Dictionary, so it follows the template and has no column rules of its own.
 
 ---
 
-## What it does
+## Data protection
 
-| Step | Action |
-|------|--------|
-| Load | Reads the ERP export (`.xls` or `.xlsx`) |
-| Filter | Keeps only the target plant/site; drops admin-note rows and cost-type rate rows |
-| Deduplicate | Retains the highest routing-plan version per part + operation |
-| Decode | Converts ERP rate values → `cycle_time_min` using per-ZBS-code formulas from config |
-| Write | Populates `Routing`, `Products`, and `Machines` sheets in the schema template |
-| Report | Prints a validation summary (rows processed/skipped, TODO fields, resource groups) |
+Plain Python that runs on your own computer. No network calls, no AI or API calls (`map_schema.py` imports no HTTP or model library). Your exports never leave the machine. Results are written next to the output path you give. The `.gitignore` blocks every data and workbook type, so exports, generated workbooks, answers files and reports cannot be committed by accident.
 
 ---
 
@@ -25,169 +18,101 @@ The tool reads raw operation/routing data, decodes cycle times according to conf
 pip install -r requirements.txt
 ```
 
-Dependencies: `pandas`, `openpyxl`, `xlrd`, `PyYAML`
+Reading `.accdb` / `.mdb` needs Windows with the Microsoft Access ODBC driver (included with Office, or the free "Access Database Engine"). Without it the tool says so; export the tables to `.xlsx` or `.csv` instead.
 
 ---
 
 ## Usage
 
 ```bash
-python extract.py \
-    --input  alle_AGs.xls \
-    --config config.yaml \
-    --schema DES_Input_Schema_v04.xlsx \
-    --output Factory1_Schema_v04.xlsx
+python map_schema.py --input <file or folder> --output my_factory.xlsx
 ```
 
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--input` | yes | ERP routing export (`.xls` or `.xlsx`) |
-| `--config` | yes | YAML config file (column names, ZBS rules) |
-| `--schema` | yes | DES schema template workbook (provides sheet structure) |
-| `--output` | yes | Path for the populated output workbook |
+| Flag | Meaning |
+|------|---------|
+| `--input` | One export (`.csv`, `.txt`, `.xls`, `.xlsx`, `.xlsm`, `.accdb`, `.mdb`) or a folder of them. Every sheet of a workbook and every table of an Access file is read. |
+| `--output` | Workbook to write. |
+| `--config` | Optional rules file: row filters, rate-code unit conversion, id prefixes, latest routing version (see below). |
+| `--answers` | Answers of an earlier run. Default: `<output>_answers.yaml` if it exists. |
+| `--no-input` | Ask nothing; open questions are listed in the report. |
+| `--schema`, `--synonyms` | Other template or synonym list (defaults: `schema/Schema_Template_EMPTY.xlsx`, `synonyms.yaml`). |
+
+Try it on the made-up demo (German headers, one workbook with two sheets plus two CSV files):
+
+```bash
+python map_schema.py --input examples/demo --output demo.xlsx
+```
 
 ---
 
-## Configuring `config.yaml` for a new ERP source
+## What happens in a run
 
-All ERP-specific knowledge lives in `config.yaml`. You never need to edit `extract.py`.
+1. **Read.** Every table is loaded; the header row is found automatically (title rows above it are skipped). CSV separators `;` `,` tab `|` and encodings UTF-8 / Windows-1252 are detected.
+2. **Tables to sheets.** Each table is scored against each template sheet by its headers. A table is assigned without a question only when at least two columns match with certainty and it clearly beats every other table. Otherwise you choose from a short list (or "none").
+3. **Columns.** For each sheet column:
+   - a header equal to a known synonym is assigned (`Artikelnummer` -> `product_id`, `Arbeitsgang` -> `step_number`, `Kostenstelle` -> `resource_group`);
+   - a header that may mean this column or another one becomes a question (`Menge`, `Anzahl`, `resource_id`, `quantity_on_hand` vs `available_qty`);
+   - columns still missing are listed per sheet, required ones first. You choose: **fill by hand later**, or **give the file and column**. A column from another table is linked by a column both tables share (for example `bom_id`); if a key appears several times there, the first row is used and the report says so.
+4. **Units.** Time columns are converted to the template unit (`_min` or `_hours`). The unit is read from the header (`[min]`, `[h]`, `minutes`, `Stunden`); if the header does not say, you are asked. Date columns (release, due) become minutes after one simulation start, which is asked once.
+5. **Write and report.** The workbook is written with English template headers; `Config scenario_id` is set to the file name. A report lists what is still empty: required gaps first, then optional ones with the default the model will use. Saved as `<output>_report.txt`.
 
-### 1 — Map your column names
+Every answer is saved in `<output>_answers.yaml`. Run again and nothing already answered is asked; edit that file to change a choice. The answers file is also the written record of how this company's data was mapped.
 
-Open your ERP export and find the exact header text for each logical field:
-
-```yaml
-columns:
-  part_id:              "Teil"          # part / product number
-  part_name:            "Bezeichnung"   # part description
-  routing_step:         "Arbeitsgang"   # operation sequence number
-  routing_plan:         "Arbeitsplan"
-  routing_plan_version: "Arbeitsplan-Version"
-  operation_name:       "AG-Bezeichnung"
-  cost_center:          "Kst."          # maps to resource group (RG_xxx)
-  machine_id:           "Fert.anlage"   # individual machine ID
-  calc_rate:            "kalk. Vorgabe" # numeric rate value
-  zbs:                  "ZBS"           # rate-type code
-  site:                 "Standort"      # plant / site filter column
-```
-
-Replace the quoted strings with whatever your ERP export uses.
-
-### 2 — Set the site filter
-
-```yaml
-site_filter:
-  value: "OV1"   # keep only rows where columns.site equals this
-```
-
-### 3 — Define ZBS / rate-type decode rules
-
-`skip_values` lists codes that mean "not a time row" (cost rates, blanks). These rows are dropped entirely.
-
-`conversions` maps each rate-type code to a formula:
-`cycle_time_min = (rate_value / divisor) × multiplier`
-
-```yaml
-zbs_rules:
-  skip_values:
-    - ""
-    - "C"         # Kosten pro Stück — cost row, not time
-  conversions:
-    "3":
-      description: "hours per 1 000 pieces"
-      divisor: 1000
-      multiplier: 60
-    "2":
-      description: "hours per 100 pieces"
-      divisor: 100
-      multiplier: 60
-```
-
-For a SAP PP export where the rate is already in minutes per piece:
-
-```yaml
-  conversions:
-    "MIN":
-      description: "minutes per piece"
-      divisor: 1
-      multiplier: 1
-```
-
-### 4 — Skip admin-note operation names
-
-```yaml
-skip_operation_names:
-  - "Hinweis"   # add any operation labels that are notes, not real steps
-```
-
-### 5 — Default output values
-
-Fields with no ERP source column receive these defaults. Adjust as needed:
-
-```yaml
-defaults:
-  batch_size: 1
-  yield_pct:  100.0
-  # … see config.yaml for full list
-```
-
-See [`examples/factory2_config.yaml`](examples/factory2_config.yaml) for a SAP PP stub showing a different column-name and rate-unit mapping.
+**What the tool does not do:** guess meanings or units, compute derived values (sums per product, arrival intervals, capacities from several tables), clean data, or fill Config (run length, default shift, modes). Those stay with you; the report and the `Dictionary` sheet say what each column means.
 
 ---
 
-## Output schema
+## Teaching it your headers
 
-The output workbook contains three sheets populated from the ERP data:
-
-### Routing
-One row per part × operation step.
-
-| Column | Source | Notes |
-|--------|--------|-------|
-| `product_id` | `Teil` | |
-| `step_number` | `Arbeitsgang` | integer |
-| `process_name` | `AG-Bezeichnung` | |
-| `resource_group` | derived from `Kst.` | `RG_<kst>` — rename to descriptive label |
-| `cycle_time_min` | decoded from `kalk. Vorgabe` + `ZBS` | |
-| `setup_time_min` | default 0.0 | fill from setup-time source if available |
-| `batch_size` | default 1 | fill from PB-Familien.xlsx |
-| `yield_pct` | default 100 | fill from scrap data |
-| other columns | defaults from config | |
-
-### Products
-One stub row per unique part number. `lot_size` and `arrival_interval_min` are written as `TODO` — fill from demand/sales data.
-
-### Machines
-One stub row per unique `Fert.anlage` × resource group. `MTBF_hours` and `MTTR_min` are `TODO` — fill from maintenance data (e.g. Stammdaten.xlsx).
+`synonyms.yaml` holds, per template column, the headers that mean it for sure (`exact`) and the ones that might (`ambiguous`). Matching ignores case, umlauts, punctuation and text in brackets. Add your ERP's headers there; no code change is needed.
 
 ---
 
-## Validation summary
+## Rules file (`--config`, optional)
 
-After every run the tool prints:
-
+```yaml
+filters:                      # keep only rows where a column has this value
+  make_buy: MAKE
+skip_values:                  # drop rows where a column has one of these values
+  operation_name: [note, blocked]
+unit_rules:                   # convert a column by a rate-code column
+  cycle_time_min:
+    code_column: rate_code
+    skip_codes: ["", "C"]     # rows with these codes are not time data
+    codes:
+      "3": {divisor: 1000, multiplier: 60}   # hours per 1,000 pieces -> minutes per piece
+      "2": {divisor: 100,  multiplier: 60}
+transforms:                   # id changes, per column or per sheet.column
+  resource_group: {prefix: "RG_"}
+  Alternatives.product_id: {strip_prefix: "RTG-"}
+dedupe:                       # keep the highest version per key
+  keys: [part, plan, step]
+  version: plan_version
+columns_map:                  # force a header for a column
+  Routing.cycle_time_min: "Standard Value 1"
 ```
-──────────────────────────────────────────────────────
-  VALIDATION SUMMARY
-──────────────────────────────────────────────────────
-  Rows loaded from ERP file          59,574
-  Rows written to Routing sheet      57,312
-  Rows skipped (all reasons)          2,262
-──────────────────────────────────────────────────────
-  Skip reasons:
-    ZBS_skip (cost/blank)              1,686
-    operation='Hinweis'                1,316
-    wrong_site (≠OV1)                      0
-    invalid_step_number                  ...
-  Fields populated                        14
-  Fields still TODO                        3
-    → MTBF_hours
-    → MTTR_min
-    → lot_size
-  Unique resource groups                  12
-  Unique products                      4,821
-  Machine stubs written                  237
-──────────────────────────────────────────────────────
+
+`config.yaml` is a complete example for an ERP routing export with rate codes (ZBS), a site filter, note rows and routing versions; the older format of `extract.py` is read as well.
+
+---
+
+## Tested on
+
+| Data | Input | Result |
+|------|-------|--------|
+| Factory A, ERP routing export (German headers, rate codes, 59,258 rows) | one `.xls` + `config.yaml` | Routing of the 7 study parts identical to the hand-checked workbook (89 of 89 rows, all mapped columns) |
+| Factory A, the same data as an Access database (21 tables, one broken calculated column) | one `.accdb` + `config.yaml` | broken column skipped with a message; routing table found among 21 tables; same 89 of 89 rows |
+| Factory B, electronics data set (22 CSV files, English headers) | folder + answers for the uncertain columns | 13 sheets, every mapped column identical to the hand-built workbook; one difference: a 24-hour shift ends at `00:00` in the source and `24:00` in the workbook |
+| Demo (made up, German headers) | `examples/demo` | interactive run: units from `[min]` and `[h]`, dates to minutes, a column linked from a second file |
+
+---
+
+## Older single-file extractor
+
+`extract.py` is the first version: one routing export, Routing / Products / Machines stubs, configured by `config.yaml`. It still works; `map_schema.py` replaces it.
+
+```bash
+python extract.py --input routing_export.xls --config config.yaml --schema schema/Schema_Template_EMPTY.xlsx --output out.xlsx
 ```
 
 ---
@@ -196,21 +121,14 @@ After every run the tool prints:
 
 ```
 erp-to-des-schema/
-├── README.md
-├── config.yaml               default config (Factory 1 column names)
-├── extract.py                main script
-├── requirements.txt
-└── examples/
-    ├── factory1_config.yaml  identical to default — reference copy
-    └── factory2_config.yaml  stub for SAP PP routing export
+├── map_schema.py              the tool
+├── synonyms.yaml              German / English header synonyms per template column
+├── schema/Schema_Template_EMPTY.xlsx
+├── config.yaml                example rules file (ERP export with rate codes)
+├── examples/
+│   ├── demo/                  made-up demo data with German headers
+│   ├── factory1_config.yaml   reference copy of config.yaml
+│   └── factory2_config.yaml   stub for a CSV routing export
+├── extract.py                 older single-file extractor
+└── requirements.txt
 ```
-
----
-
-## Next steps after extraction
-
-1. **Rename resource groups** — open the output workbook, find the `RG_xxx` codes in the Routing sheet, and replace them with descriptive names (e.g. `RG_CASTING`, `RG_CORE`) using your Kostenstellen reference.
-2. **MTBF / MTTR** — fill the Machines sheet from maintenance data.
-3. **Lot sizes** — fill `lot_size` in the Products sheet from batch-family data.
-4. **Arrival rates** — fill `arrival_interval_min` from sales/demand data.
-5. **Shifts** — populate the Shifts sheet from your shift schedule.

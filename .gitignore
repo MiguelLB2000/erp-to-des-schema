@@ -1,0 +1,19 @@
+# Company data and generated workbooks never go into this repository.
+*.xls
+*.xlsx
+*.xlsm
+*.xlsb
+*.csv
+*.txt
+*.accdb
+*.mdb
+*.laccdb
+*_answers.yaml
+*_report.txt
+__pycache__/
+
+# Exceptions: the empty template, the made-up demo data, the dependency list.
+!schema/Schema_Template_EMPTY.xlsx
+!examples/demo/
+!examples/demo/*
+!requirements.txt

@@ -1,0 +1,3 @@
+Schicht;Schichtbezeichnung;Beginn;Ende;Wochentage
+FRUEH;Frühschicht;06:00;14:00;Mo-Fr
+SPAET;Spätschicht;14:00;22:00;Mo-Fr
