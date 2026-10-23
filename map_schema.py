@@ -251,18 +251,21 @@ def load_template(path):
         cols = [c.value for c in ws[2] if c.value]
         banner = str(ws["A1"].value or "")
         sheets[ws.title] = {"cols": cols, "required": "[REQUIRED]" in banner}
-    required_cols, blank_rule = set(), {}
+    required_cols, blank_rule, not_used = set(), {}, {}
     if "Dictionary" in wb.sheetnames:
         ws = wb["Dictionary"]
         hdr = [c.value for c in ws[2]]
-        i_s, i_c, i_r, i_b = (hdr.index(h) for h in ("sheet", "column", "required_optional", "if_blank_or_missing"))
+        i_s, i_c, i_r, i_b, i_st = (hdr.index(h) for h in ("sheet", "column", "required_optional", "if_blank_or_missing", "status"))
         for row in ws.iter_rows(min_row=3, values_only=True):
             rule = str(row[i_b] or "")
             blank_rule[(row[i_s], row[i_c])] = rule
+            if str(row[i_st] or "") in ("not used yet", "open decision"):
+                not_used[(row[i_s], row[i_c])] = str(row[i_st])
             if row[i_r] == "required" and ("skipped" in rule or "REJECTED" in rule):
                 required_cols.add((row[i_s], row[i_c]))
     for s, info in sheets.items():
         info["blank"] = {c: blank_rule.get((s, c), "") for c in info["cols"]}
+        info["not_used"] = {c: not_used[(s, c)] for c in info["cols"] if (s, c) in not_used}
         sheet_level = len(info["cols"]) > 1 and len(set(info["blank"].values())) == 1
         info["req_cols"] = [c for c in info["cols"] if (s, c) in required_cols and (not sheet_level or c == info["cols"][0])]
     count = defaultdict(int)
@@ -716,10 +719,15 @@ def main():
         if not info["required"] and s not in results:
             say(f"  {s}: whole sheet (module off)")
         elif s in report:
-            miss = [c for c in info["cols"] if c not in info["req_cols"] and (c not in report[s]["filled"] or c in report[s]["open"])]
+            miss = [c for c in info["cols"] if c not in info["req_cols"] and c not in info["not_used"]
+                    and (c not in report[s]["filled"] or c in report[s]["open"])]
             for c in miss:
                 rule = info["blank"].get(c, "")
                 say(f"  {s}.{c}" + (f"  -> {rule}" if rule.startswith("DEFAULT") else ""))
+    kept = [f"{s}.{c} ({st})" for s, info in sheets.items() if s in report
+            for c, st in info["not_used"].items() if c in report[s]["filled"]]
+    if kept:
+        say("\nFilled from your data, but not used by the model yet (kept for later): " + ", ".join(kept))
     say("\nAlways check by hand: Config (run length, default_machine_shift, modes); units and meaning of every column (Dictionary).")
     with open(f"{stem}_report.txt", "w", encoding="utf-8") as fh:
         fh.write("\n".join(LOG) + "\n")
